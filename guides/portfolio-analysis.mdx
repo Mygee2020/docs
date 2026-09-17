@@ -1,0 +1,196 @@
+---
+title: "Portfolio Analysis with CoinGecko API"
+sidebarTitle: "Portfolio Analysis"
+description: "Build portfolio trackers and analytics with live valuation, cost basis, and multi-currency support using the CoinGecko API."
+---
+
+Portfolio analysis with CoinGecko combines live pricing, historical snapshots, and rich market data to value holdings, calculate cost basis, and chart performance. This guide walks through the endpoints you need to build a portfolio tracker or analyze an existing portfolio.
+
+<Note>
+  **TL;DR** — Use `/simple/price` for live valuation, `/coins/{id}/history` for cost basis on purchase dates, `/coins/markets` for dashboard data, and `/coins/{id}/market_chart` for performance charts.
+</Note>
+
+## Prerequisites
+
+- A CoinGecko API key. [Get one here](https://www.coingecko.com/en/api/pricing).
+- A list of holdings: coin IDs (or contract addresses) and quantities.
+- A currency preference (USD, EUR, BTC, etc.).
+
+Replace `YOUR_API_KEY` in the examples below with your actual key.
+
+## Workflow
+
+<Steps>
+  <Step title="Set currency preference">
+    Fetch supported fiat and crypto currencies to populate a currency selector.
+
+    <CodeGroup>
+    ```bash Pro API
+    curl -X GET \
+      "https://pro-api.coingecko.com/api/v3/simple/supported_vs_currencies" \
+      -H "x-cg-pro-api-key: YOUR_API_KEY"
+    ```
+
+    ```bash Demo API
+    curl -X GET \
+      "https://api.coingecko.com/api/v3/simple/supported_vs_currencies" \
+      -H "x-cg-demo-api-key: YOUR_API_KEY"
+    ```
+    </CodeGroup>
+
+    ```json Response
+    ["btc", "eth", "usd", "eur", "jpy", "gbp", "aud", "cad", "sgd", "myr"]
+    ```
+
+    Pass the user's choice as `vs_currencies` to pricing endpoints.
+  </Step>
+
+  <Step title="Fetch live valuation">
+    Poll spot prices for all holdings. Batch multiple coins in one call for minimal overhead.
+
+    <CodeGroup>
+    ```bash Pro API
+    curl -X GET \
+      "https://pro-api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana&vs_currencies=usd,eur&include_market_cap=true&include_24hr_change=true" \
+      -H "x-cg-pro-api-key: YOUR_API_KEY"
+    ```
+
+    ```bash Demo API
+    curl -X GET \
+      "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana&vs_currencies=usd,eur&include_market_cap=true&include_24hr_change=true" \
+      -H "x-cg-demo-api-key: YOUR_API_KEY"
+    ```
+    </CodeGroup>
+
+    ```json Response
+    {
+      "bitcoin": {
+        "usd": 67432.51,
+        "eur": 62145.30,
+        "usd_market_cap": 1326789012345,
+        "usd_24h_change": 2.34
+      }
+    }
+    ```
+
+    Multiply each price by the holding quantity, then sum for total portfolio value.
+  </Step>
+
+  <Step title="Price tokens by contract address">
+    For ERC-20 and other contract-based tokens, look up prices by contract address instead of coin ID.
+
+    <CodeGroup>
+    ```bash Pro API
+    curl -X GET \
+      "https://pro-api.coingecko.com/api/v3/simple/token_price/ethereum?contract_addresses=0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48&vs_currencies=usd&include_market_cap=true" \
+      -H "x-cg-pro-api-key: YOUR_API_KEY"
+    ```
+
+    ```bash Demo API
+    curl -X GET \
+      "https://api.coingecko.com/api/v3/simple/token_price/ethereum?contract_addresses=0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48&vs_currencies=usd&include_market_cap=true" \
+      -H "x-cg-demo-api-key: YOUR_API_KEY"
+    ```
+    </CodeGroup>
+
+    | Key param            | Use                                                        |
+    | -------------------- | ---------------------------------------------------------- |
+    | `id` (path)          | Asset platform: `ethereum`, `polygon-pos`, `solana`, etc.  |
+    | `contract_addresses` | Comma-separated token addresses                            |
+
+    <Tip>
+      For onchain tokens not listed on CoinGecko, use Onchain Simple Price. It returns prices by contract address across any supported network.
+    </Tip>
+  </Step>
+
+  <Step title="Pull dashboard data">
+    Get rich market data for up to 250 coins per page: rankings, sparklines, highs/lows, and multi-timeframe changes.
+
+    <CodeGroup>
+    ```bash Pro API
+    curl -X GET \
+      "https://pro-api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin,ethereum,solana&sparkline=true&price_change_percentage=1h,24h,7d,30d" \
+      -H "x-cg-pro-api-key: YOUR_API_KEY"
+    ```
+
+    ```bash Demo API
+    curl -X GET \
+      "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin,ethereum,solana&sparkline=true&price_change_percentage=1h,24h,7d,30d" \
+      -H "x-cg-demo-api-key: YOUR_API_KEY"
+    ```
+    </CodeGroup>
+
+    | Key param                 | Use                                             |
+    | ------------------------- | ----------------------------------------------- |
+    | `ids`                     | Filter to your portfolio coins only             |
+    | `sparkline`               | 7-day sparkline data for inline mini-charts     |
+    | `price_change_percentage` | `1h,24h,7d,30d` for multi-timeframe performance |
+  </Step>
+
+  <Step title="Calculate cost basis">
+    Fetch a price snapshot on a specific date to calculate cost basis for each purchase.
+
+    <CodeGroup>
+    ```bash Pro API
+    curl -X GET \
+      "https://pro-api.coingecko.com/api/v3/coins/bitcoin/history?date=15-01-2024" \
+      -H "x-cg-pro-api-key: YOUR_API_KEY"
+    ```
+
+    ```bash Demo API
+    curl -X GET \
+      "https://api.coingecko.com/api/v3/coins/bitcoin/history?date=15-01-2024" \
+      -H "x-cg-demo-api-key: YOUR_API_KEY"
+    ```
+    </CodeGroup>
+
+    ```json Response
+    {
+      "market_data": {
+        "current_price": {
+          "usd": 42856.23,
+          "eur": 39456.78
+        }
+      }
+    }
+    ```
+
+    <Note>
+      The `date` parameter uses **dd-mm-yyyy** format (not ISO). Data returned is a snapshot at 00:00:00 UTC.
+    </Note>
+  </Step>
+
+  <Step title="Chart performance over time">
+    Fetch price, market cap, and volume over time for charting portfolio value and calculating time-weighted returns.
+
+    <CodeGroup>
+    ```bash Pro API
+    curl -X GET \
+      "https://pro-api.coingecko.com/api/v3/coins/ethereum/market_chart?vs_currency=usd&days=365&interval=daily" \
+      -H "x-cg-pro-api-key: YOUR_API_KEY"
+    ```
+
+    ```bash Demo API
+    curl -X GET \
+      "https://api.coingecko.com/api/v3/coins/ethereum/market_chart?vs_currency=usd&days=365&interval=daily" \
+      -H "x-cg-demo-api-key: YOUR_API_KEY"
+    ```
+    </CodeGroup>
+
+    | Key param  | Use                                                              |
+    | ---------- | ---------------------------------------------------------------- |
+    | `days`     | Lookback: `1`, `7`, `14`, `30`, `90`, `180`, `365`, or `max`     |
+    | `interval` | `daily` for consistent data points, or omit for auto granularity |
+  </Step>
+</Steps>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="AI Integration" icon="robot" href="/ai-integration">
+    Wire portfolio analysis into an AI agent via MCP or SDK.
+  </Card>
+  <Card title="Web3 Database" icon="database" href="/ai-integration/web3-cryptocurrency-database">
+    See the full data surface CoinGecko exposes.
+  </Card>
+</CardGroup>

@@ -18,9 +18,16 @@
         ]
       },
       {
-        "group": "Ai Integration",
+        "group": "AI Integration",
         "pages": [
-          "ai-integration/index"
+          "ai-integration/index",
+          "ai-integration/web3-cryptocurrency-database"
+        ]
+      },
+      {
+        "group": "Guides",
+        "pages": [
+          "guides/portfolio-analysis"
         ]
       }
     ],
