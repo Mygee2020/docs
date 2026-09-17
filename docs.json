@@ -16,6 +16,12 @@
           "index",
           "quickstart"
         ]
+      },
+      {
+        "group": "Ai Integration",
+        "pages": [
+          "ai-integration/index"
+        ]
       }
     ],
     "global": {
